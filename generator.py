@@ -14,86 +14,18 @@ from zones import zones
 
 class rublacklist:
   db_file_name = 'rublacklist.db'
-  
-  def get_cookie(self, **kwargs):
-    logging.info('Invoked get_cookie')
-    return { kwargs['name']: kwargs['value'] }
-  
-  def is_title(self, driver, text):
-    logging.info('Invoked is_title')
-    try:
-      assert str(text) in driver.title
-      return True
-    except AssertionError:
-      return False
-  
-  def get_cf_cookies(self, url):
-    logging.info('Invoked get_cf_cookies')
-    logging.debug('Starting Google Chrome')
-    options = webdriver.ChromeOptions()
-#     options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    driver = webdriver.Chrome(chrome_options=options)
-    logging.debug('Opening url: {}'.format(url))
-    driver.get(url)
-    logging.debug('Waiting')
-    sleep(20)
-    while self.is_title(driver, 'Just a moment...'):
-      logging.debug('Opened cloudflare check, sleep 1 sec')
-      sleep(2)
-#     logging.debug('Re-open url')
-#     driver.get(url)
-    rcookies = []
-    scookies = driver.get_cookies()
-    for cookie in scookies:
-      rcookies.append(self.get_cookie(**cookie))
-    logging.debug('Collected cookies: {}'.format(rcookies))
-    return rcookies
 
-  def get_cookies(self, url):
-    logging.info('Invoked get_cookies')
-    rcookies = self.get_cf_cookies(url)
-    keys = []
-    for rkey in rcookies:
-      keys.append(
-        list(
-          rkey.keys()
-        )[0]
-      )
-    logging.debug('Collected keys: {}'.format(keys))
-    i = 0
-    result = {}
-    for key in keys:
-      result[key] = rcookies[i][key]
-      i += 1
-    logging.debug('Collected result: {}'.format(result))
-    return result
 
   def get_blocked_json(self):
-    logging.info('Invoked get_blocked_json')
-    headers = {
-      'Host': 'reestr.rublacklist.net',
-      'Connection': 'keep-alive',
-      'Pragma': 'no-cache',
-      'Cache-Control': 'no-cache',
-      'Upgrade-Insecure-Requests': '1',
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-      'DNT': '1',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'Accept-Language': 'en-GB,en-US;q=0.9,en;q=0.8'
-    }
-    logging.debug('Proceeding with headers: {}'.format(headers))
-    url = 'https://reestr.rublacklist.net'
-    cookies = dict(**self.get_cookies(url))
-    url = 'https://reestr.rublacklist.net/api/v2/current/json'
-    logging.debug('Proceed with cookies: {}'.format(cookies))
-    logging.debug('Proceeding url: {}'.format(url))
-    r = requests.get(url, headers=headers, cookies=cookies)
-    logging.debug('Finished. len(data)={}'.format(len(r.text)))
-    r = r.json()
-    return r
-  
+    try:
+      url = 'https://api.reserve-rbl.ru/api/v2/current/json'
+      return requests.get(url).json()
+    except:
+      with open('expand.txt') as f:
+        return json.loads(
+          f.read()
+        )
+
   def expand(self, template):
     data = self.get_blocked_json()
     key = list(data.keys())[0]
@@ -136,11 +68,14 @@ class rublacklist:
 #         logging.debug('Collected line: {}'.format(ip))
         ips.append(ip)
     for ip in ips:
-      ip, prefix = subnet().get_prefix(ip)
-#       logging.debug('Detected ip: {} with subnet: {}'.format(ip, prefix))
+      ip, prefix = subnets().get_prefix(ip)
+      if prefix == '255.255.255.255': continue
       self.db.execute(
         "INSERT INTO cache (ip, subnet) values ('{}', '{}')".format(ip, prefix)
       )
+    self.db.execute(
+      "DELETE FROM cache WHERE subnet == '255.255.255.255';"
+    )
     self.db_close()
 
   def expand_from_cache(self, template):
@@ -150,7 +85,6 @@ class rublacklist:
       ip, mask = row
 #       logging.debug('Got ip: {} with subnet: {}'.format(ip, mask))
       line = 'push "route {} {}"\n'.format(ip, mask)
-#       if line not in template:
       template += line
     self.db_close()
     return template
@@ -159,7 +93,7 @@ class rublacklist:
 
 
 
-class subnet:
+class subnets:
   
   prefixes = {
     '8': '255.0.0.0',
@@ -231,7 +165,7 @@ if __name__ == '__main__':
     template = f.read()
 
   # import zones from zones.py on top of current file
-  template = subnet().expand(zones=zones, template=template)
+  template = subnets().expand(zones=zones, template=template)
 
 #   # Way 1 - on-line expand
 #   template = rublacklist().expand(template)

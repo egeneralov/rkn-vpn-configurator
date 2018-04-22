@@ -14,19 +14,23 @@ Generate ovpn config on-the-fly.
   - todo: collect it from additional sources
     - habrahabr (2 pages)
 
-## rest.py
+## app.py
 
-REST-full (will be) API. Have only one route (`/`) with only one method (`POST`).
+REST-full (will be) API. Have only one route (`/`) with two methods (`GET`, `POST`).
+
+- `GET` for README.md 2 html
+- `POST` with `file` multipart/formdata for extend your template
 
 #### bash use:
 
-    curl -XPOST -F 'file=@openvpn.conf' http://127.0.0.1:8080/
+    curl https://rkn-vpn-configurator.herokuapp.com/
+    curl -XPOST -F 'file=@openvpn.conf' https://rkn-vpn-configurator.herokuapp.com/
 
 #### python-way:
 
     import requests
     r = requests.post(
-      'http://127.0.0.1:8080/',
+      'https://rkn-vpn-configurator.herokuapp.com/',
       files = {
         'file': open('openvpn.conf', 'rb')
       }
@@ -34,7 +38,7 @@ REST-full (will be) API. Have only one route (`/`) with only one method (`POST`)
     with open('server.conf', 'a+') as f:
       f.write(r.text)
 
-## Notice
+## [deprecated] Notice
 
 This application for contact the `rublacklist.net` (cloudflare) must see in system path:
 
