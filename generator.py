@@ -69,7 +69,7 @@ class rublacklist:
         ips.append(ip)
     for ip in ips:
       ip, prefix = subnets().get_prefix(ip)
-      if prefix == '255.255.255.255': continue
+#       if prefix == '255.255.255.255': continue
       self.db.execute(
         "INSERT INTO cache (ip, subnet) values ('{}', '{}')".format(ip, prefix)
       )
