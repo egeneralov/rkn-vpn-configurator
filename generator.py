@@ -73,9 +73,9 @@ class rublacklist:
       self.db.execute(
         "INSERT INTO cache (ip, subnet) values ('{}', '{}')".format(ip, prefix)
       )
-    self.db.execute(
-      "DELETE FROM cache WHERE subnet == '255.255.255.255';"
-    )
+#     self.db.execute(
+#       "DELETE FROM cache WHERE subnet == '255.255.255.255';"
+#     )
     self.db_close()
 
   def expand_from_cache(self, template):
